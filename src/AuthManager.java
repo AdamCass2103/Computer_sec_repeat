@@ -1,22 +1,19 @@
-import java.io.*;
-import java.security.MessageDigest;
-import java.security.SecureRandom;
-import java.util.Base64;
 import java.util.Scanner;
 
 public class AuthManager {
-    private static final String USER_FILE = "user.txt";
     private static String storedSalt;
     private static String storedHash;
 
     public static boolean login(Scanner scanner) {
         try {
-            if (!new File(USER_FILE).exists()) {
-                System.out.println("No credentials found. Let's set one up.");
-                setupPassword(scanner);
+            String[] creds = FileUtils.loadSaltAndHash();
+            if (creds == null) {
+                System.out.println("No credentials found. Please set up a password first.");
+                return false;
             }
 
-            loadStoredCredentials();
+            storedSalt = creds[0];
+            storedHash = creds[1];
 
             System.out.print("Enter your password: ");
             String inputPassword = scanner.nextLine();
@@ -25,7 +22,7 @@ public class AuthManager {
                 System.out.println("Access granted!");
                 return true;
             } else {
-                System.out.println("Incorrect password. Exiting...");
+                System.out.println("Incorrect password.");
                 return false;
             }
         } catch (Exception e) {
@@ -34,22 +31,17 @@ public class AuthManager {
         }
     }
 
-    private static void setupPassword(Scanner scanner) throws Exception {
-        System.out.print("Set a password: ");
-        String password = scanner.nextLine();
-
-        String salt = generateSalt();
-        String hash = hashPassword(password, salt);
-
-        saveCredentials(salt, hash);
-        storedSalt = salt;
-        storedHash = hash;
-
-        System.out.println("Password setup complete!");
-    }
-
     public static void changePassword(Scanner scanner) {
         try {
+            String[] creds = FileUtils.loadSaltAndHash();
+            if (creds == null) {
+                System.out.println("No credentials found. Cannot change password.");
+                return;
+            }
+
+            storedSalt = creds[0];
+            storedHash = creds[1];
+
             System.out.print("Enter your current password: ");
             String currentPassword = scanner.nextLine();
 
@@ -61,12 +53,12 @@ public class AuthManager {
             System.out.print("Enter your new password: ");
             String newPassword = scanner.nextLine();
 
-            String salt = generateSalt();
-            String hash = hashPassword(newPassword, salt);
+            String newSalt = FileUtils.generateSalt();
+            String newHash = FileUtils.hashPassword(newPassword, newSalt);
 
-            saveCredentials(salt, hash);
-            storedSalt = salt;
-            storedHash = hash;
+            FileUtils.saveSaltAndHash(newSalt, newHash);
+            storedSalt = newSalt;
+            storedHash = newHash;
 
             System.out.println("Password changed successfully!");
         } catch (Exception e) {
@@ -74,42 +66,8 @@ public class AuthManager {
         }
     }
 
-    private static void loadStoredCredentials() throws IOException {
-        BufferedReader reader = new BufferedReader(new FileReader(USER_FILE));
-        String line = reader.readLine();
-        reader.close();
-
-        if (line == null || !line.contains(":")) {
-            throw new IOException("Invalid credentials file format.");
-        }
-
-        String[] parts = line.split(":");
-        storedSalt = parts[0];
-        storedHash = parts[1];
-    }
-
-    private static void saveCredentials(String salt, String hash) throws IOException {
-        BufferedWriter writer = new BufferedWriter(new FileWriter(USER_FILE));
-        writer.write(salt + ":" + hash);
-        writer.newLine();
-        writer.close();
-    }
-
     public static boolean verifyPassword(String password, String salt, String hash) throws Exception {
-        String hashedInput = hashPassword(password, salt);
+        String hashedInput = FileUtils.hashPassword(password, salt);
         return hashedInput.equals(hash);
-    }
-
-    private static String generateSalt() {
-        byte[] saltBytes = new byte[16];
-        new SecureRandom().nextBytes(saltBytes);
-        return Base64.getEncoder().encodeToString(saltBytes);
-    }
-
-    private static String hashPassword(String password, String salt) throws Exception {
-        MessageDigest md = MessageDigest.getInstance("SHA-256");
-        md.update(Base64.getDecoder().decode(salt));
-        byte[] hashedBytes = md.digest(password.getBytes("UTF-8"));
-        return Base64.getEncoder().encodeToString(hashedBytes);
     }
 }
