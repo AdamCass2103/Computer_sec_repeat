@@ -40,37 +40,52 @@ public class Main {
             System.out.print("Enter your password: ");
             inputPassword = scanner.nextLine();
 
-            boolean loggedIn = AuthManager.verifyPassword(inputPassword, salt, storedHash);
-            if (!loggedIn) {
+            if (!AuthManager.login(scanner)) {
                 System.out.println("Incorrect password. Exiting...");
                 return;
             }
             System.out.println("Access granted!");
-        }
 
-        // Initialize NoteManager and proceed with menu
-        NoteManager noteManager = new NoteManager(inputPassword, salt);
-        while (true) {
-            System.out.println("\nSecure Notes Menu");
-            System.out.println("1. View All Notes");
-            System.out.println("2. Search Notes");
-            System.out.println("3. Create Note");
-            System.out.println("4. Edit Note");
-            System.out.println("5. Delete Note");
-            System.out.println("6. Change Password");
-            System.out.println("0. Exit");
-            System.out.print("Choose an option: ");
 
-            String choice = scanner.nextLine();
-            switch (choice) {
-                case "1": noteManager.listAllNotes(); break;
-                case "2": noteManager.searchNotes(scanner); break;
-                case "3": noteManager.createNote(scanner); break;
-                case "4": noteManager.editNote(scanner); break;
-                case "5": noteManager.deleteNote(scanner); break;
-                case "6": AuthManager.changePassword(scanner); break;
-                case "0": System.out.println("Goodbye!"); return;
-                default: System.out.println("Invalid choice.");
+            // Initialize NoteManager and proceed with menu
+            NoteManager noteManager = new NoteManager(inputPassword, salt);
+            while (true) {
+                System.out.println("\nSecure Notes Menu");
+                System.out.println("1. View All Notes");
+                System.out.println("2. Search Notes");
+                System.out.println("3. Create Note");
+                System.out.println("4. Edit Note");
+                System.out.println("5. Delete Note");
+                System.out.println("6. Change Password");
+                System.out.println("0. Exit");
+                System.out.print("Choose an option: ");
+
+                String choice = scanner.nextLine();
+                switch (choice) {
+                    case "1":
+                        noteManager.listAllNotes();
+                        break;
+                    case "2":
+                        noteManager.searchNotes(scanner);
+                        break;
+                    case "3":
+                        noteManager.createNote(scanner);
+                        break;
+                    case "4":
+                        noteManager.editNote(scanner);
+                        break;
+                    case "5":
+                        noteManager.deleteNote(scanner);
+                        break;
+                    case "6":
+                        AuthManager.changePassword(scanner);
+                        break;
+                    case "0":
+                        System.out.println("Goodbye!");
+                        return;
+                    default:
+                        System.out.println("Invalid choice.");
+                }
             }
         }
     }
