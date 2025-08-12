@@ -1,5 +1,3 @@
-package ie.dkit.securenotes;
-
 import java.io.*;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -35,9 +33,7 @@ public class AuthManager {
                 System.out.print("Enter your password: ");
                 String password = scanner.nextLine();
 
-                String hash = hashPassword(password, storedSalt);
-
-                if (hash.equals(storedHash)) {
+                if (verifyPassword(password, storedSalt, storedHash)) {
                     System.out.println("✅ Access granted.");
                     return true;
                 } else {
@@ -60,23 +56,24 @@ public class AuthManager {
         String salt = generateSalt();
         String hash = hashPassword(password, salt);
 
-        BufferedWriter writer = new BufferedWriter(new FileWriter(USER_FILE));
-        writer.write(salt + ":" + hash);
-        writer.close();
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(USER_FILE))) {
+            writer.write(salt + ":" + hash);
+        }
 
+        System.out.println("[DEBUG] Created salt: " + salt);
+        System.out.println("[DEBUG] Created hash: " + hash);
         System.out.println("✅ Password created successfully.");
         return true;
     }
 
     public static boolean changePassword(Scanner scanner) {
         try {
+            loadStoredCredentials();
+
             System.out.print("Enter your current password: ");
             String oldPassword = scanner.nextLine();
 
-            loadStoredCredentials();
-            String hash = hashPassword(oldPassword, storedSalt);
-
-            if (!hash.equals(storedHash)) {
+            if (!verifyPassword(oldPassword, storedSalt, storedHash)) {
                 System.out.println("❌ Incorrect password.");
                 return false;
             }
@@ -87,9 +84,9 @@ public class AuthManager {
             String newSalt = generateSalt();
             String newHash = hashPassword(newPassword, newSalt);
 
-            BufferedWriter writer = new BufferedWriter(new FileWriter(USER_FILE));
-            writer.write(newSalt + ":" + newHash);
-            writer.close();
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(USER_FILE))) {
+                writer.write(newSalt + ":" + newHash);
+            }
 
             System.out.println("✅ Password changed successfully.");
             return true;
@@ -101,11 +98,18 @@ public class AuthManager {
     }
 
     private static void loadStoredCredentials() throws IOException {
-        BufferedReader reader = new BufferedReader(new FileReader(USER_FILE));
-        String[] parts = reader.readLine().split(":");
-        reader.close();
-        storedSalt = parts[0];
-        storedHash = parts[1];
+        try (BufferedReader reader = new BufferedReader(new FileReader(USER_FILE))) {
+            String line = reader.readLine();
+            if (line == null || !line.contains(":")) {
+                throw new IOException("Invalid credentials file format.");
+            }
+            String[] parts = line.trim().split(":");
+            storedSalt = parts[0].trim();
+            storedHash = parts[1].trim();
+        }
+
+        System.out.println("[DEBUG] Loaded salt: " + storedSalt);
+        System.out.println("[DEBUG] Loaded hash: " + storedHash);
     }
 
     private static String generateSalt() throws NoSuchAlgorithmException {
@@ -119,5 +123,10 @@ public class AuthManager {
         SecretKeyFactory skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
         byte[] hash = skf.generateSecret(spec).getEncoded();
         return Base64.getEncoder().encodeToString(hash);
+    }
+
+    private static boolean verifyPassword(String password, String salt, String expectedHash) throws NoSuchAlgorithmException, InvalidKeySpecException {
+        String hash = hashPassword(password, salt);
+        return hash.equals(expectedHash);
     }
 }
